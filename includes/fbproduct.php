@@ -262,6 +262,7 @@ class WC_Facebook_Product {
 				break;
 		}
 
+		
 		$image_urls = array_merge( $image_urls, $this->get_gallery_urls() );
 		$image_urls = array_filter( array_unique( $image_urls ) );
 
