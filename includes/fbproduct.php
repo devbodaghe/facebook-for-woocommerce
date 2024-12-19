@@ -44,9 +44,6 @@ class WC_Facebook_Product {
 	const MAX_TIME   = 'T23:59+00:00';
 	const MIN_TIME   = 'T00:00+00:00';
 
-    public static $rich_text_description_source = WC_Facebookcommerce_Utils::WOO_DESCRIPTION;
-	
-
 	static $use_checkout_url = array(
 		'simple'    => 1,
 		'variable'  => 1,
@@ -501,17 +498,17 @@ class WC_Facebook_Product {
 
 		if ( empty( $rich_text_description ) ) {
 			// Try to get description from post meta if fb description has been set
-			$temp_rich_text_description = get_post_meta(
+			$rich_text_description = get_post_meta(
 				$this->id,
 				self::FB_RICH_TEXT_DESCRIPTION,
 				self::FB_RICH_TEXT_DESCRIPTION,
 				true
 			);
 
-			if ($temp_rich_text_description){
-                self::$rich_text_description_source = WC_Facebookcommerce_Utils::FB_DESCRIPTION;
-				$rich_text_description = $temp_rich_text_description;
-            }
+			// Ensure it's empty if not found
+			if ( empty( $rich_text_description ) ) {
+				$rich_text_description = ''; 
+			}
 		}
 
 		// For variable products, we want to use the rich text description of the variant.
@@ -759,15 +756,12 @@ class WC_Facebook_Product {
 			$brand = wp_strip_all_tags( WC_Facebookcommerce_Utils::get_store_name() );
 		}
 
-		$rich_text_description = $this->get_rich_text_description();
-		
-		// print_r('source', self::$rich_text_description_source);
-
 		if ( self::PRODUCT_PREP_TYPE_ITEMS_BATCH === $type_to_prepare_for ) {
 			$product_data = array_merge(
 			array(
 				'title'                 => WC_Facebookcommerce_Utils::clean_string( $this->get_title() ),
 				'description'           => $this->get_fb_description(),
+				'rich_text_description' => $this->get_rich_text_description(),
 				'image_link'            => $image_urls[0],
 				'additional_image_link' => $this->get_additional_image_urls( $image_urls ),
 				'link'                  => $product_url,
@@ -777,9 +771,7 @@ class WC_Facebook_Product {
 				'price'                 => $this->get_fb_price( true ),
 				'availability'          => $this->is_in_stock() ? 'in stock' : 'out of stock',
 				'visibility'            => Products::is_product_visible( $this->woo_product ) ? \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_VISIBLE : \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN,
-				'rich_text_description' => $rich_text_description
 			),
-			// self::$rich_text_description_source === WC_Facebookcommerce_Utils::WOO_DESCRIPTION ? array('rich_text_description' => $rich_text_description) : array('rich_text_description' => $rich_text_description)
 		);
 			$product_data   = $this->add_sale_price( $product_data, true );
 			$gpc_field_name = 'google_product_category';
@@ -791,6 +783,7 @@ class WC_Facebook_Product {
 				array(
 				'name'                  => WC_Facebookcommerce_Utils::clean_string( $this->get_title() ),
 				'description'           => $this->get_fb_description(),
+				'rich_text_description' => $this->get_rich_text_description(),
 				'image_url'             => $image_urls[0],
 				'additional_image_urls' => $this->get_additional_image_urls( $image_urls ),
 				'url'                   => $product_url,
@@ -813,7 +806,6 @@ class WC_Facebook_Product {
 				'availability'          => $this->is_in_stock() ? 'in stock' : 'out of stock',
 				'visibility'            => Products::is_product_visible( $this->woo_product ) ? \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_VISIBLE : \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN,
 			),
-			self::$rich_text_description_source === WC_Facebookcommerce_Utils::WOO_DESCRIPTION ? array('rich_text_description' => $rich_text_description) : array()
 		);
 
 			if ( self::PRODUCT_PREP_TYPE_NORMAL !== $type_to_prepare_for && ! empty( $video_urls ) ) {

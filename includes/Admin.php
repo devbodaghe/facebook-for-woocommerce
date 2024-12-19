@@ -1222,14 +1222,14 @@ class Admin {
 					\WC_Facebookcommerce_Integration::FB_PRODUCT_DESCRIPTION,
 					array(
 						'id'      => 'wc_facebook_sync_mode',
+						'label'         => __( 'Facebook Description', 'facebook-for-woocommerce' ),
 						'textarea_name' => \WC_Facebookcommerce_Integration::FB_PRODUCT_DESCRIPTION,
 						'textarea_rows' => 10,
 						'media_buttons' => true,
 						'teeny'        => true,
 						'quicktags'    => false,
 						'tinymce'      => array(
-							'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,wp_more,spellchecker,fullscreen,wp_adv',
-							'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help'
+							'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,wp_more,spellchecker,fullscreen',
 						),
 					)
 				);
@@ -1364,7 +1364,6 @@ class Admin {
 			)
 		);
 
-		// $editor_id = sprintf( 'variable_%s%s', \WC_Facebookcommerce_Integration::FB_PRODUCT_DESCRIPTION, $index );
 		echo '<div class="wp-editor-wrap">';
 		echo '<label for="' . esc_attr(\WC_Facebookcommerce_Integration::FB_PRODUCT_DESCRIPTION) . '">' . 
 			 esc_html__( 'Facebook Description', 'facebook-for-woocommerce' ) . 
@@ -1373,16 +1372,17 @@ class Admin {
 			$description,
 			\WC_Facebookcommerce_Integration::FB_PRODUCT_DESCRIPTION,
 			array(
+				'id'      		=> 'wc_facebook_sync_mode',
+				'label'         => __( 'Facebook Description', 'facebook-for-woocommerce' ),
 				'textarea_name' => \WC_Facebookcommerce_Integration::FB_PRODUCT_DESCRIPTION,
 				'textarea_rows' => 10,
 				'media_buttons' => true,
 				'teeny'        => true,
 				'quicktags'    => false,
 				'tinymce'      => array(
-					'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,wp_more,spellchecker,fullscreen,wp_adv',
-					'toolbar2' => 'strikethrough,hr,forecolor,pastetext,removeformat,charmap,outdent,indent,undo,redo,wp_help'
-				),
+					'toolbar1' => 'formatselect,bold,italic,bullist,numlist,blockquote,alignleft,aligncenter,alignright,link,wp_more,spellchecker,fullscreen',
 				)
+			)
 		);
 		echo '</div>';
 
