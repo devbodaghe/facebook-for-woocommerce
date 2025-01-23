@@ -42,6 +42,16 @@ class Admin {
 	/** @var Product_Sets the product set admin handler. */
 	protected $product_sets;
 
+	/** @var string the "new" condition */
+	const CONDITION_NEW = 'new';
+
+	/** @var string the "used" condition */
+	const CONDITION_USED = 'used';
+
+	/** @var string the "refurbished" condition */
+	const CONDITION_REFURBISHED = 'refurbished';
+
+
 	/**
 	 * Admin constructor.
 	 *
@@ -1185,6 +1195,7 @@ class Admin {
 		$price        = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_PRICE, true );
 		$image_source = get_post_meta( $post->ID, Products::PRODUCT_IMAGE_SOURCE_META_KEY, true );
 		$image        = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_IMAGE, true );
+		$condition    = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_CONDITION, true ) ; // Set default to 'New'
 
 		if ( $sync_enabled ) {
 			$sync_mode = $is_visible ? self::SYNC_MODE_SYNC_AND_SHOW : self::SYNC_MODE_SYNC_AND_HIDE;
@@ -1229,7 +1240,7 @@ class Admin {
 				woocommerce_wp_radio(
 					array(
 						'id'            => 'fb_product_image_source',
-						'label'         => __( 'Facebook Product Image', 'facebook-for-woocommerce' ),
+						'label'         => __( '1Facebook Product Image', 'facebook-for-woocommerce' ),
 						'desc_tip'      => true,
 						'description'   => __( 'Choose the product image that should be synced to the Facebook catalog and displayed for this product.', 'facebook-for-woocommerce' ),
 						'options'       => array(
@@ -1290,6 +1301,32 @@ class Admin {
 					?>
 			</div>
 			<?php endif; ?>
+
+			<div class='wc_facebook_commerce_fields'>
+				<p class="text-heading">
+					<span><?php echo esc_html(  \WooCommerce\Facebook\Admin\Product_Categories::get_wip_catalog_explanation_text() ); ?></span>
+				</p>
+			</div>
+
+			<?php
+
+				woocommerce_wp_select(
+					array(
+						'id'      => 'wc_facebook_condition',
+						'label'   => __( 'Condition', 'facebook-for-woocommerce' ),
+						'options' => array(
+							self::CONDITION_NEW => __( 'New', 'facebook-for-woocommerce' ),
+							self::CONDITION_REFURBISHED => __( 'Refurbished', 'facebook-for-woocommerce' ),
+							self::CONDITION_USED => __( 'Used', 'facebook-for-woocommerce' ),
+						),
+						'value'       => $condition,
+						'desc_tip'    => true,
+						'description' => __( 'Choose the condition of the product.', 'facebook-for-woocommerce' ),
+						)
+				);
+
+			?>
+
 			<div class='wc-facebook-commerce-options-group options_group'>
 				<?php \WooCommerce\Facebook\Admin\Products::render_google_product_category_fields_and_enhanced_attributes( $product ); ?>
 			</div>
@@ -1374,7 +1411,7 @@ class Admin {
 			array(
 				'id'            => "variable_fb_product_image_source$index",
 				'name'          => "variable_fb_product_image_source[$index]",
-				'label'         => __( 'Facebook Product Image', 'facebook-for-woocommerce' ),
+				'label'         => __( '2Facebook Product Image', 'facebook-for-woocommerce' ),
 				'desc_tip'      => true,
 				'description'   => __( 'Choose the product image that should be synced to the Facebook catalog and displayed for this product.', 'facebook-for-woocommerce' ),
 				'options'       => array(
