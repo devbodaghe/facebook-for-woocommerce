@@ -34,10 +34,10 @@ class WC_Facebook_Product {
 	// to this object.
 	const FB_PRODUCT_DESCRIPTION   = 'fb_product_description';
 	const FB_PRODUCT_PRICE         = 'fb_product_price';
-	const FB_SIZE			     = 'fb_size';
 	const FB_COLOR			     = 'fb_color';
 	const FB_MATERIAL		     = 'fb_material';
 	const FB_PATTERN		     = 'fb_pattern';
+	const FB_SIZE			     = 'fb_size';
 	const FB_PRODUCT_IMAGE         = 'fb_product_image';
 	const FB_PRODUCT_CONDITION   = 'fb_product_condition';
 	const FB_AGE_GROUP			 = 'fb_age_group';
