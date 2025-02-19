@@ -21,8 +21,7 @@ defined( 'ABSPATH' ) || exit;
  */
 class FBCategories {
 
-	/** @var array Keys to exclude from attribute processing */
-	private $keys_to_exclude = [ 'brand' => true ];
+	private $keys_to_exclude = ['brand' => true, 'color' => true, 'colour'=> true];
 
 	/**
 	 * Fetches the attribute from a category using attribute key.
