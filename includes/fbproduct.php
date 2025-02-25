@@ -588,6 +588,18 @@ class WC_Facebook_Product {
 	}
 
 	public function get_fb_brand() {
+		// If this is a variation, first check for variation-specific brand attribute
+		if ($this->is_type('variation')) {
+			$attributes = $this->woo_product->get_attributes();
+			
+			foreach ($attributes as $key => $value) {
+				$attr_key = strtolower($key);
+				if ($attr_key === 'brand') {
+					return WC_Facebookcommerce_Utils::clean_string($value);
+				}
+			}
+		}
+
 		// Get brand directly from post meta
 		$fb_brand = get_post_meta(
 			$this->id,
@@ -595,28 +607,21 @@ class WC_Facebook_Product {
 			true
 		);
 
-		// If empty and this is a variation, get the parent brand
-		if ( empty( $fb_brand ) && $this->is_type( 'variation' ) ) {
-			$parent_id = $this->get_parent_id();
-			if ( $parent_id ) {
-				$fb_brand = get_post_meta( $parent_id, self::FB_BRAND, true );
-			}
-		}
-
 		// Fallback to brand attribute or store name if no brand found
-		if ( empty( $fb_brand ) ) {
-			$brand          = get_post_meta( $this->id, Products::ENHANCED_CATALOG_ATTRIBUTES_META_KEY_PREFIX . 'brand', true );
-			$brand_taxonomy = get_the_term_list( $this->id, 'product_brand', '', ', ' );
-			if ( $brand ) {
+		if (empty($fb_brand)) {
+			$brand = get_post_meta($this->id, Products::ENHANCED_CATALOG_ATTRIBUTES_META_KEY_PREFIX . 'brand', true);
+			$brand_taxonomy = get_the_term_list($this->id, 'product_brand', '', ', ');
+			
+			if ($brand) {
 				$fb_brand = $brand;
-			} elseif ( ! is_wp_error( $brand_taxonomy ) && $brand_taxonomy ) {
+			} elseif (!is_wp_error($brand_taxonomy) && $brand_taxonomy) {
 				$fb_brand = $brand_taxonomy;
 			} else {
-				$fb_brand = wp_strip_all_tags( WC_Facebookcommerce_Utils::get_store_name() );
+				$fb_brand = wp_strip_all_tags(WC_Facebookcommerce_Utils::get_store_name());
 			}
 		}
 
-		return WC_Facebookcommerce_Utils::clean_string( $fb_brand );
+		return WC_Facebookcommerce_Utils::clean_string($fb_brand);
 	}
 
 	public function get_fb_description() {
@@ -785,24 +790,6 @@ class WC_Facebook_Product {
 		return $product_data;
 	}
 
-	public function get_fb_mpn() {
-		$fb_mpn = get_post_meta(
-			$this->id,
-			self::FB_MPN,
-			true
-		);
-
-		// If empty and this is a variation, get the parent MPN
-		if ( empty( $fb_mpn ) && $this->is_type( 'variation' ) ) {
-			$parent_id = $this->get_parent_id();
-			if ( $parent_id ) {
-				$fb_mpn = get_post_meta( $parent_id, self::FB_MPN, true );
-			}
-		}
-
-		return WC_Facebookcommerce_Utils::clean_string( $fb_mpn );
-	}
-
 	public function get_price_plus_tax( $price ) {
 		$woo_product = $this->woo_product;
 		// // wc_get_price_including_tax exist for Woo > 2.7
@@ -897,7 +884,24 @@ class WC_Facebook_Product {
 	}
 
 
+	/**
+	 * Gets the FB size value for the product.
+	 *
+	 * @return string
+	 */
 	public function get_fb_size() {
+		// If this is a variation, get its specific size value
+		if ($this->is_type('variation')) {
+			$attributes = $this->woo_product->get_attributes();
+			
+			foreach ($attributes as $key => $value) {
+				$attr_key = strtolower($key);
+				if ($attr_key === 'size') {
+					return mb_substr(WC_Facebookcommerce_Utils::clean_string($value), 0, 200);
+				}
+			}
+		}
+
 		// Get size directly from post meta
 		$fb_size = get_post_meta(
 			$this->id,
@@ -917,60 +921,112 @@ class WC_Facebook_Product {
 	}
 
 
+	/**
+	 * Gets the FB color value for the product.
+	 *
+	 * @return string
+	 */
 	public function get_fb_color() {
-		// Get color directly from post meta
-		$fb_size = get_post_meta(
+		// If this is a variation, get its specific color value
+		if ($this->is_type('variation')) {
+			$attributes = $this->woo_product->get_attributes();
+			
+			foreach ($attributes as $key => $value) {
+				$attr_key = strtolower($key);
+				if ($attr_key === 'color' || $attr_key === 'colour') {
+					return mb_substr(WC_Facebookcommerce_Utils::clean_string($value), 0, 200);
+				}
+			}
+		}
+
+		// Get color directly from post meta for non-variation products
+		$fb_color = get_post_meta(
 			$this->id,
 			self::FB_COLOR,
 			true
 		);
 
-		// If empty and this is a variation, get the parent condition
-		if ( empty( $fb_size ) && $this->is_type( 'variation' ) ) {
-			$parent_id = $this->get_parent_id();
-			if ( $parent_id ) {
-				$fb_size = get_post_meta( $parent_id, self::FB_COLOR, true );
+		return mb_substr(WC_Facebookcommerce_Utils::clean_string($fb_color), 0, 200);
+	}
+
+	/**
+	 * Gets the FB material value for the product.
+	 *
+	 * @return string
+	 */
+	public function get_fb_material() {
+		// If this is a variation, get its specific material value
+		if ($this->is_type('variation')) {
+			$attributes = $this->woo_product->get_attributes();
+			
+			// Check for material attribute
+			foreach ($attributes as $key => $value) {
+				$attr_key = strtolower($key);
+				if ($attr_key === 'material') {
+					return mb_substr(WC_Facebookcommerce_Utils::clean_string($value), 0, 200);
+				}
 			}
 		}
 
-		return mb_substr( WC_Facebookcommerce_Utils::clean_string( $fb_size ), 0, 200 );
-	}
-
-	public function get_fb_material() {
-		// Get material directly from post meta
+		// Get material directly from post meta for non-variation products
 		$fb_material = get_post_meta(
 			$this->id,
 			self::FB_MATERIAL,
 			true
 		);
 
-		// If empty and this is a variation, get the parent condition
-		if ( empty( $fb_material ) && $this->is_type( 'variation' ) ) {
-			$parent_id = $this->get_parent_id();
-			if ( $parent_id ) {
-				$fb_material = get_post_meta( $parent_id, self::FB_MATERIAL, true );
+		return mb_substr(WC_Facebookcommerce_Utils::clean_string($fb_material), 0, 200);
+	}
+
+	public function get_fb_mpn() {
+		// If this is a variation, get its specific mpn value
+		if ($this->is_type('variation')) {
+			$attributes = $this->woo_product->get_attributes();
+			
+			// Check for mpn attribute
+			foreach ($attributes as $key => $value) {
+				$attr_key = strtolower($key);
+				if ($attr_key === 'mpn') {
+					return mb_substr(WC_Facebookcommerce_Utils::clean_string($value), 0, 200);
+				}
 			}
 		}
 
-		return mb_substr( WC_Facebookcommerce_Utils::clean_string( $fb_material ), 0, 200 );
+		// Get material directly from post meta for non-variation products
+		$fb_mpn = get_post_meta(
+			$this->id,
+			self::FB_MPN,
+			true
+		);
+
+		return WC_Facebookcommerce_Utils::clean_string( $fb_mpn );
 	}
 
-
+	/**
+	 * Gets the FB pattern value for the product.
+	 *
+	 * @return string
+	 */
 	public function get_fb_pattern() {
+		// If this is a variation, get its specific material value
+		if ($this->is_type('variation')) {
+			$attributes = $this->woo_product->get_attributes();
+			
+			// Check for material attribute
+			foreach ($attributes as $key => $value) {
+				$attr_key = strtolower($key);
+				if ($attr_key === 'pattern') {
+					return mb_substr(WC_Facebookcommerce_Utils::clean_string($value), 0, 200);
+				}
+			}
+		}
+
 		// Get color directly from post meta
 		$fb_pattern = get_post_meta(
 			$this->id,
 			self::FB_PATTERN,
 			true
 		);
-
-		// If empty and this is a variation, get the parent condition
-		if ( empty( $fb_pattern ) && $this->is_type( 'variation' ) ) {
-			$parent_id = $this->get_parent_id();
-			if ( $parent_id ) {
-				$fb_pattern = get_post_meta( $parent_id, self::FB_PATTERN, true );
-			}
-		}
 
 		return mb_substr( WC_Facebookcommerce_Utils::clean_string( $fb_pattern ), 0, 200 );
 	}
@@ -1170,49 +1226,12 @@ class WC_Facebook_Product {
 		}
 
 		// Currently only items batch and feed support enhanced catalog fields
-		if ( self::PRODUCT_PREP_TYPE_NORMAL !== $type_to_prepare_for && $google_product_category ) {
-			$product_data = $this->apply_enhanced_catalog_fields_from_attributes( $product_data, $google_product_category );
-		}
-
-		// Add stock quantity if the product or variant is stock managed.
-		// In case if variant is not stock managed but parent is, fallback on parent value.
-		if ( $this->woo_product->managing_stock() ) {
-			$product_data['quantity_to_sell_on_facebook'] = (int) max( 0, $this->woo_product->get_stock_quantity() );
-		} elseif ( $this->woo_product->is_type( 'variation' ) ) {
-			$parent_product = wc_get_product( $this->woo_product->get_parent_id() );
-			if ( $parent_product && $parent_product->managing_stock() ) {
-				$product_data['quantity_to_sell_on_facebook'] = (int) max( 0, $parent_product->get_stock_quantity() );
+		if ( self::PRODUCT_PREP_TYPE_NORMAL !== $type_to_prepare_for ) {
+			// Apply enhanced catalog fields regardless of Google product category
+			if ( $google_product_category ) {
+				$product_data = $this->apply_enhanced_catalog_fields_from_attributes( $product_data, $google_product_category );
 			}
-		}
-
-		// Add GTIN (Global Trade Item Number)
-		if ( method_exists( $this->woo_product, 'get_global_unique_id' ) && $gtin = $this->woo_product->get_global_unique_id() ) {
-			$product_data['gtin'] = $gtin;
-		}
-
-		// Only use checkout URLs if they exist.
-		$checkout_url = $this->build_checkout_url( $product_url );
-		if ( $checkout_url ) {
-			$product_data['checkout_url'] = $checkout_url;
-		}
-
-		// IF using WPML, set the product to hidden unless it is in the
-		// default language. WPML >= 3.2 Supported.
-		if ( defined( 'ICL_LANGUAGE_CODE' ) ) {
-			if ( class_exists( 'WC_Facebook_WPML_Injector' ) && WC_Facebook_WPML_Injector::should_hide( $id ) ) {
-				$product_data['visibility'] = \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN;
-			}
-		}
-
-			// Exclude variations that are "virtual" products from export to Facebook &&
-			// No Visibility Option for Variations
-			// get_virtual() returns true for "unassembled bundles", so we exclude
-			// bundles from this check.
-		if ( true === $this->get_virtual() && 'bundle' !== $this->get_type() ) {
-			$product_data['visibility'] = \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN;
-		}
-
-		if ( self::PRODUCT_PREP_TYPE_FEED !== $type_to_prepare_for ) {
+			// Always process basic variant data
 			$this->prepare_variants_for_item( $product_data );
 		} elseif (
 			WC_Facebookcommerce_Utils::is_all_caps( $product_data['description'] )
