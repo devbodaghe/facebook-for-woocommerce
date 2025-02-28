@@ -152,8 +152,8 @@ class Admin {
 		add_filter( 'gettext', array( $this, 'change_custom_taxonomy_tip' ), 20, 2 );
 		add_action( 'wp_ajax_sync_facebook_attributes', array( $this, 'ajax_sync_facebook_attributes' ) );
 
-		// Add styles for moving question mark icons to the right
-		add_action( 'admin_head', array( $this, 'add_styles' ) );
+		// // Add styles for moving question mark icons to the right
+		// add_action( 'admin_head', array( $this, 'add_styles' ) );
 	}
 
 	/**
