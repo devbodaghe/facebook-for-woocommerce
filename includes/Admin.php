@@ -151,9 +151,6 @@ class Admin {
 		// add custom taxonomy for Product Sets
 		add_filter( 'gettext', array( $this, 'change_custom_taxonomy_tip' ), 20, 2 );
 		add_action( 'wp_ajax_sync_facebook_attributes', array( $this, 'ajax_sync_facebook_attributes' ) );
-
-		// // Add styles for moving question mark icons to the right
-		// add_action( 'admin_head', array( $this, 'add_styles' ) );
 	}
 
 	/**
@@ -1420,18 +1417,6 @@ class Admin {
 			</script>
 
 			<?php
-
-				woocommerce_wp_text_input(
-					array(
-						'id'    => \WC_Facebook_Product::FB_MPN,
-						'label' => __( 'Manufacturer Parts Number (MPN)', 'facebook-for-woocommerce' ),
-						'value' => $fb_mpn,
-						'class' => 'enable-if-sync-enabled',
-						'desc_tip'    => true,
-						'description' => __( 'Manufacturer parts number of the item', 'facebook-for-woocommerce' ),
-					)
-				);
-
 				woocommerce_wp_text_input(
 					array(
 						'id'    => \WC_Facebook_Product::FB_BRAND,
@@ -1472,7 +1457,7 @@ class Admin {
 						'class'       => 'enable-if-sync-enabled',
 					)
 				);
-
+ 
 				woocommerce_wp_text_input(
 					array(
 						'id'          => \WC_Facebook_Product::FB_COLOR,
@@ -1603,7 +1588,7 @@ class Admin {
 		?>
 		<div class="facebook-metabox wc-metabox closed">
 			<h3>
-				<strong><?php esc_html_e( 'Facebook', 'facebook-for-woocommerce' ); ?></strong>
+				<strong><?php esc_html_e( 'Facebook for WooCommerce', 'facebook-for-woocommerce' ); ?></strong>
 				<div class="handlediv" aria-label="<?php esc_attr_e( 'Click to toggle', 'facebook-for-woocommerce' ); ?>"></div>
 			</h3>
 			<div class="wc-metabox-content" style="display: none;">
@@ -1842,109 +1827,27 @@ class Admin {
 	}
 
 	public function add_tab_switch_script() {
-		global $post;
-		if (!$post || get_post_type($post) !== 'product') {
-			return;
-		}
 		?>
 		<script type="text/javascript">
 			jQuery(document).ready(function($) {
-				// State object to track badge display status
-				var syncedBadgeState = {
-					material: false,
-					color: false,
-					size: false,
-					pattern: false,
-					brand: false,
-					mpn: false
-				};
-
-				// Function to sync Facebook attributes
-				function syncFacebookAttributes() {
-					$.ajax({
-						url: ajaxurl,
-						type: 'POST',
-						data: {
-							action: 'sync_facebook_attributes',
-							product_id: <?php echo esc_js($post->ID); ?>,
-							nonce: '<?php echo wp_create_nonce('sync_facebook_attributes'); ?>'
-						},
-						success: function(response) {
-							if (response.success) {
-								// Array of fields to potentially update
-								var fields = {
-									'material': '<?php echo \WC_Facebook_Product::FB_MATERIAL ?>',
-									'color': '<?php echo \WC_Facebook_Product::FB_COLOR ?>',
-									'size': '<?php echo \WC_Facebook_Product::FB_SIZE ?>',
-									'pattern': '<?php echo \WC_Facebook_Product::FB_PATTERN ?>',
-									'brand': '<?php echo \WC_Facebook_Product::FB_BRAND ?>',
-									'mpn': '<?php echo \WC_Facebook_Product::FB_MPN ?>',
-								};
-
-								// Loop through each field
-								Object.keys(fields).forEach(function(key) {
-									var fieldId = '#' + fields[key];
-									var $field = $(fieldId);
-									
-									// Always remove existing badges first
-									$field.next('.sync-indicator').remove();
-									
-									if (response.data && response.data[key]) {
-										// Field has a synced value
-										$field
-											.val(response.data[key])
-											.prop('disabled', true)
-											.addClass('synced-attribute');
-										
-										// Only add badge if it hasn't been added yet
-										if (!syncedBadgeState[key]) {
-											$field.after('<span class="sync-indicator dashicons dashicons-yes-alt" data-tip="Synced from the Attributes tab."><span class="sync-tooltip">Synced from the Attributes tab.</span></span>');
-											syncedBadgeState[key] = true;
-										}
-									} else {
-										// Field has no synced value or attribute was removed
-										$field
-											.val('') // Always set to empty string when attribute is removed
-											.prop('disabled', false)
-											.removeClass('synced-attribute');
-										
-										// Only clear the value if it was previously synced
-										if ($field.hasClass('synced-attribute')) {
-											$field.val('');
-										}
-										
-										// Reset the badge state
-										syncedBadgeState[key] = false;
-									}
-								});
-							}
-						}
-					});
-				}
-
-				// Listen for attribute removal
-				$('.product_data_tabs').on('click', '.remove_row', function(e) {
-					// Wait a brief moment for WooCommerce to remove the attribute
-					setTimeout(function() {
-						// Only trigger if we're on the Facebook tab
-						if ($('.fb_commerce_tab').hasClass('active')) {
-							syncFacebookAttributes();
-						}
-					}, 100);
-				});
-
-				// Original tab click handler
-				$('.product_data_tabs li').on('click', function() {
-					var tabClass = $(this).attr('class');
-					if (tabClass.includes('fb_commerce_tab')) {
-						syncFacebookAttributes();
+				// Store form data when switching tabs
+				let formData = {};
+				
+				$('.product_data_tabs .fb_commerce_tab a').on('click', function() {
+					// When clicking Facebook tab, restore any saved form data
+					if (Object.keys(formData).length > 0) {
+						Object.keys(formData).forEach(function(id) {
+							$('#' + id).val(formData[id]);
+						});
 					}
 				});
 
-				// Reset badge states when leaving the Facebook tab
-				$('.product_data_tabs li').not('.fb_commerce_tab').on('click', function() {
-					Object.keys(syncedBadgeState).forEach(function(key) {
-						syncedBadgeState[key] = false;
+				// Before leaving Facebook tab, save all form values
+				$('.product_data_tabs li:not(.fb_commerce_tab) a').on('click', function() {
+					$('#facebook_options input[type="text"], #facebook_options select, #facebook_options textarea').each(function() {
+						if (this.id) {
+							formData[this.id] = $(this).val();
+						}
 					});
 				});
 			});
