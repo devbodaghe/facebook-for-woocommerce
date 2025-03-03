@@ -142,10 +142,22 @@ class Enhanced_Catalog_Attribute_Fields {
 			$priority[ $key ] = $recommended_attributes[ $key ]['priority'];
 		}
 
+		// Check if we have any naturally recommended attributes before the fallback
+		$has_natural_recommendations = !empty(array_filter(
+			$all_attributes_with_values,
+			function ( $attr ) {
+				return $attr['recommended'];
+			}
+		));
+
 		array_multisort( $priority, SORT_DESC, $recommended_attributes );
 		$selector_value      = $this->get_value( self::OPTIONAL_SELECTOR_KEY, $category_id );
 		$is_showing_optional = 'on' === $selector_value;
-		$this->render_selector_checkbox( $is_showing_optional );
+
+		// Only show the selector if we have natural recommendations
+		if ($has_natural_recommendations) {
+			$this->render_selector_checkbox( $is_showing_optional );
+		}
 
 		foreach ( $recommended_attributes as $attribute ) {
 			$this->render_attribute( $attribute, true, $is_showing_optional );
