@@ -1419,6 +1419,15 @@ class Admin {
 			<?php
 				woocommerce_wp_text_input(
 					array(
+						'id'    => \WC_Facebook_Product::FB_MPN,
+						'label' => __( 'Manufacturer Part Number (MPN)', 'facebook-for-woocommerce' ),
+						'value' => $fb_mpn,
+						'class' => 'enable-if-sync-enabled',
+					)
+				);
+				
+				woocommerce_wp_text_input(
+					array(
 						'id'    => \WC_Facebook_Product::FB_BRAND,
 						'label' => __( 'Brand', 'facebook-for-woocommerce' ),
 						'value' => $fb_brand,

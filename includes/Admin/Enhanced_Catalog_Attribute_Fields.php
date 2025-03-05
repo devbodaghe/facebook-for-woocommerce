@@ -85,16 +85,17 @@ class Enhanced_Catalog_Attribute_Fields {
 		$extracted = false === $index ? array() : array_splice( $attributes, $index, 1 );
 		return empty( $extracted ) ? null : array_shift( $extracted );
 	}
-
 	public function render( $category_id ) {
-		$all_attributes             = $this->category_handler->get_attributes_with_fallback_to_parent_category( $category_id );
+		$all_attributes = (array) $this->category_handler->get_attributes_with_fallback_to_parent_category( $category_id );
+		
 		$all_attributes_with_values = array_map(
 			function ( $attribute ) use ( $category_id ) {
 				return array_merge( $attribute, array( 'value' => $this->get_value( $attribute['key'], $category_id ) ) );
 			},
 			$all_attributes
 		);
-		$recommended_attributes     = array_filter(
+
+		$recommended_attributes = array_filter(
 			$all_attributes_with_values,
 			function ( $attr ) {
 				return $attr['recommended'];
@@ -255,6 +256,7 @@ class Enhanced_Catalog_Attribute_Fields {
 		?>
 		<label for="<?php echo esc_attr( $attr_id ); ?>">
 			<?php echo esc_html( $label ); ?>
+			<span class="woocommerce-help-tip" data-tip="<?php echo esc_attr( $attribute['description'] ); ?>"></span>
 		</label>
 		<?php
 	}
@@ -290,7 +292,6 @@ class Enhanced_Catalog_Attribute_Fields {
 				<option value="<?php echo esc_attr( $opt ); ?>" <?php echo esc_attr( $selected_attr ); ?>> <?php echo esc_html( $opt ); ?></option>
 			<?php } ?>
 		</select/>
-		<span class="woocommerce-help-tip" data-tip="<?php echo esc_attr( $attribute['description'] ); ?>"></span>
 		<?php
 	}
 
@@ -300,7 +301,6 @@ class Enhanced_Catalog_Attribute_Fields {
 		}
 		?>
 		<input type="text" value="<?php echo esc_attr( $attribute['value'] ); ?>" name="<?php echo esc_attr( $attr_id ); ?>" id="<?php echo esc_attr( $attr_id ); ?>" placeholder="<?php echo esc_attr( $placeholder ); ?>"/>
-		<span class="woocommerce-help-tip" data-tip="<?php echo esc_attr( $attribute['description'] ); ?>"></span>
 		<?php
 	}
 }

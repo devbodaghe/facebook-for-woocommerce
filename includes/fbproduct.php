@@ -1154,6 +1154,14 @@ class WC_Facebook_Product {
 		$product_data[ 'availability' ] = $this->is_in_stock() ? 'in stock' : 'out of stock';
 		$product_data[ 'visibility' ] = Products::is_product_visible( $this->woo_product ) ? \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_VISIBLE : \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN;
 		$product_data[ 'retailer_id' ] = $retailer_id;
+		$product_data[ 'condition' ] = $this->get_fb_condition();
+		$product_data[ 'size' ] = $this->get_fb_size();
+		$product_data[ 'color' ] = $this->get_fb_color();
+		$product_data[ 'pattern' ] = Helper::str_truncate( $this->get_fb_pattern(), 100 );
+		$product_data[ 'age_group' ] = $this->get_fb_age_group();
+		$product_data[ 'gender' ] = $this->get_fb_gender();
+		$product_data[ 'material' ] = Helper::str_truncate( $this->get_fb_material(), 100 );
+		$product_data[ 'pattern' ] = Helper::str_truncate( $this->get_fb_pattern(), 100 );
 
 		if ( self::PRODUCT_PREP_TYPE_ITEMS_BATCH === $type_to_prepare_for ) {
 			$product_data['title'] = WC_Facebookcommerce_Utils::clean_string( $this->get_title() );
