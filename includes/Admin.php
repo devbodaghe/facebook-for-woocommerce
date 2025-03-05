@@ -1836,33 +1836,148 @@ class Admin {
 	}
 
 	public function add_tab_switch_script() {
+		global $post;
+		if (!$post || get_post_type($post) !== 'product') {
+			return;
+		}
 		?>
 		<script type="text/javascript">
 			jQuery(document).ready(function($) {
-				// Store form data when switching tabs
-				let formData = {};
-				
-				$('.product_data_tabs .fb_commerce_tab a').on('click', function() {
-					// When clicking Facebook tab, restore any saved form data
-					if (Object.keys(formData).length > 0) {
-						Object.keys(formData).forEach(function(id) {
-							$('#' + id).val(formData[id]);
-						});
+				// State object to track badge display status
+				var syncedBadgeState = {
+					material: false,
+					color: false,
+					size: false,
+					pattern: false,
+					brand: false,
+					mpn: false
+				};
+
+				// Store manual input values
+				var manualValues = {};
+
+				// Track which fields are currently synced
+				var syncedFields = {};
+
+				// Function to sync Facebook attributes
+				function syncFacebookAttributes() {
+					$.ajax({
+						url: ajaxurl,
+						type: 'POST',
+						data: {
+							action: 'sync_facebook_attributes',
+							product_id: <?php echo esc_js($post->ID); ?>,
+							nonce: '<?php echo wp_create_nonce('sync_facebook_attributes'); ?>'
+						},
+						success: function(response) {
+							if (response.success) {
+								// Array of fields to potentially update
+								var fields = {
+									'material': '<?php echo \WC_Facebook_Product::FB_MATERIAL ?>',
+									'color': '<?php echo \WC_Facebook_Product::FB_COLOR ?>',
+									'size': '<?php echo \WC_Facebook_Product::FB_SIZE ?>',
+									'pattern': '<?php echo \WC_Facebook_Product::FB_PATTERN ?>',
+									'brand': '<?php echo \WC_Facebook_Product::FB_BRAND ?>',
+									'mpn': '<?php echo \WC_Facebook_Product::FB_MPN ?>',
+								};
+
+								// Loop through each field
+								Object.keys(fields).forEach(function(key) {
+									var fieldId = '#' + fields[key];
+									var $field = $(fieldId);
+									
+									// Always remove existing badges first
+									$field.next('.sync-indicator').remove();
+									
+									if (response.data && response.data[key]) {
+										// Field has a synced value
+										$field
+											.val(response.data[key])
+											.prop('disabled', true)
+											.addClass('synced-attribute');
+										
+										// Mark this field as synced
+										syncedFields[key] = true;
+										
+										// Only add badge if it hasn't been added yet
+										if (!syncedBadgeState[key]) {
+											$field.after('<span class="sync-indicator dashicons dashicons-yes-alt" data-tip="Synced from the Attributes tab."><span class="sync-tooltip">Synced from the Attributes tab.</span></span>');
+											syncedBadgeState[key] = true;
+										}
+									} else {
+										// If field was previously synced but now isn't, clear it
+										if (syncedFields[key]) {
+											$field
+												.val('')
+												.prop('disabled', false)
+												.removeClass('synced-attribute');
+											
+											// Reset synced state
+											syncedFields[key] = false;
+										} else if (!$field.val() && manualValues[key]) {
+											// Restore manual value if field is empty
+											$field.val(manualValues[key]);
+										}
+										
+										// Reset the badge state
+										 syncedBadgeState[key] = false;
+									}
+								});
+							}
+						}
+					});
+				}
+
+				// Store manual input values
+				$('.woocommerce_options_panel input[type="text"]').on('input', function() {
+					var fieldId = $(this).attr('id');
+					Object.keys(syncedBadgeState).forEach(function(key) {
+						if (fieldId.includes(key)) {
+							manualValues[key] = $(this).val();
+							// When manually entering a value, mark as not synced
+							syncedFields[key] = false;
+						}
+					});
+				});
+
+				// Listen for attribute removal
+				$('.product_data_tabs').on('click', '.remove_row', function(e) {
+					// Wait a brief moment for WooCommerce to remove the attribute
+					setTimeout(function() {
+						// Only trigger if we're on the Facebook tab
+						if ($('.fb_commerce_tab').hasClass('active')) {
+							syncFacebookAttributes();
+						}
+					}, 100);
+				});
+
+				// Original tab click handler
+				$('.product_data_tabs li').on('click', function() {
+					var tabClass = $(this).attr('class');
+					if (tabClass.includes('fb_commerce_tab')) {
+						syncFacebookAttributes();
 					}
 				});
 
-				// Before leaving Facebook tab, save all form values
-				$('.product_data_tabs li:not(.fb_commerce_tab) a').on('click', function() {
-					$('#facebook_options input[type="text"], #facebook_options select, #facebook_options textarea').each(function() {
-						if (this.id) {
-							formData[this.id] = $(this).val();
-						}
+				// Reset badge states when leaving the Facebook tab
+				$('.product_data_tabs li').not('.fb_commerce_tab').on('click', function() {
+					Object.keys(syncedBadgeState).forEach(function(key) {
+						syncedBadgeState[key] = false;
 					});
+				});
+
+				// Initial store of values
+				Object.keys(syncedBadgeState).forEach(function(key) {
+					var fieldId = '#fb_' + key;
+					var value = $(fieldId).val();
+					if (value && !$(fieldId).hasClass('synced-attribute')) {
+						manualValues[key] = value;
+					}
 				});
 			});
 		</script>
 		<?php
-	}
+	}	
 
 	public function sync_product_attributes( $product_id ) {
 		$product = wc_get_product( $product_id );
