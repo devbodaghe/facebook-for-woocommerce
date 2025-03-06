@@ -1901,7 +1901,7 @@ class Admin {
 										
 										// Only add badge if it hasn't been added yet
 										if (!syncedBadgeState[key]) {
-											$field.after('<span class="sync-indicator dashicons dashicons-yes-alt" data-tip="Synced from the Attributes tab."><span class="sync-tooltip">Synced from the Attributes tab.</span></span>');
+											$field.after('<span class="sync-indicator wc-attributes-icon" data-tip="Synced from the Attributes tab."><span class="sync-tooltip">Synced from the Attributes tab.</span></span>');
 											syncedBadgeState[key] = true;
 										}
 									} else {

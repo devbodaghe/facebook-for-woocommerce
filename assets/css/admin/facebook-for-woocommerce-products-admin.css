@@ -201,17 +201,6 @@
 	line-height: 26px;
 	font-weight: 600;
 }
-.sync-indicator.dashicons-yes-alt {
-	display: inline-block;
-	margin-left: 8px;
-	cursor: help;
-	vertical-align: middle;
-	color: #46b450;
-	font-size: 11px;
-	position: relative;
-	line-height: 1;  /* Added this */
-	top: 3px;  /* Added this to fine-tune alignment */
-}
 
 .sync-indicator .sync-tooltip {
 	display: none;
@@ -248,34 +237,6 @@
 	background-color: #f0f0f1 !important;
 	cursor: not-allowed;
 }
-.sync-indicator.dashicons-yes-alt {
-	display: inline-block;
-	margin-left: 8px;
-	cursor: help;
-	vertical-align: middle;
-	color: #46b450;
-	font-size: 11px;
-	position: relative;
-	line-height: 1;  /* Added this */
-	top: 3px;  /* Added this to fine-tune alignment */
-}
-
-.sync-indicator .sync-tooltip {
-	display: none;
-	position: absolute;
-	background: #32373c;
-	padding: 8px;
-	border-radius: 3px;
-	color: #fff;
-	font-size: 11px;
-	font-family: -apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Oxygen-Sans,Ubuntu,Cantarell,"Helvetica Neue",sans-serif;
-	line-height: 1.4;
-	white-space: nowrap;
-	z-index: 9999;
-	top: 100%;
-	left: 50%;
-	transform: translateX(-50%) translateY(8px);
-}
 
 .sync-indicator .sync-tooltip:before {
 	content: '';
@@ -289,4 +250,20 @@
 
 .sync-indicator:hover .sync-tooltip {
 	display: block;
+}
+
+.wc-attributes-icon {
+    display: inline-block;
+    margin-left: 8px;
+    cursor: help;
+    vertical-align: middle;
+    font-size: 15px;
+    position: relative;
+    line-height: 1;
+    top: 2px;
+}
+
+.wc-attributes-icon:before {
+    font-family: Dashicons;
+    content: "\f175";
 }
