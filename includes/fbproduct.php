@@ -588,26 +588,32 @@ class WC_Facebook_Product {
 	}
 
 	public function get_fb_brand() {
-		// If this is a variation, first check for variation-specific brand attribute
+		// If this is a variation, first check for variation-specific brand
 		if ($this->is_type('variation')) {
-			$attributes = $this->woo_product->get_attributes();
-			
-			foreach ($attributes as $key => $value) {
-				$attr_key = strtolower($key);
-				if ($attr_key === 'brand') {
-					return WC_Facebookcommerce_Utils::clean_string($value);
+			// Get brand directly from variation's post meta
+			$fb_brand = get_post_meta(
+				$this->id,
+				self::FB_BRAND,
+				true
+			);
+
+			// If variation has no brand set, get from parent
+			if (empty($fb_brand)) {
+				$parent_id = $this->get_parent_id();
+				if ($parent_id) {
+					$fb_brand = get_post_meta($parent_id, self::FB_BRAND, true);
 				}
 			}
+		} else {
+			// Get brand directly from post meta for non-variation products
+			$fb_brand = get_post_meta(
+				$this->id,
+				self::FB_BRAND,
+				true
+			);
 		}
 
-		// Get brand directly from post meta
-		$fb_brand = get_post_meta(
-			$this->id,
-			self::FB_BRAND,
-			true
-		);
-
-		// Fallback to brand attribute or store name if no brand found
+		// Only fallback to store name if no brand is found on product or parent
 		if (empty($fb_brand)) {
 			$brand = get_post_meta($this->id, Products::ENHANCED_CATALOG_ATTRIBUTES_META_KEY_PREFIX . 'brand', true);
 			$brand_taxonomy = get_the_term_list($this->id, 'product_brand', '', ', ');

@@ -836,26 +836,29 @@ class fbproductTest extends WP_UnitTestCase {
 		// Create a variable product and set the brand for the parent
 		$variable_product = WC_Helper_Product::create_variation_product();
 		$facebook_product_parent = new \WC_Facebook_Product($variable_product);
-		$facebook_product_parent->set_fb_brand('Nike');
-		$facebook_product_parent->save();
-
+		
+		// Set brand for parent product
+		update_post_meta($variable_product->get_id(), \WC_Facebook_Product::FB_BRAND, 'Nike');
+		
 		// Get the variation product
 		$variation = wc_get_product($variable_product->get_children()[0]);
 
-		// Create a Facebook product instance for the variation
-		$facebook_product_variation = new \WC_Facebook_Product($variation);
+		// Create a Facebook product instance for the variation with parent
+		$facebook_product_variation = new \WC_Facebook_Product($variation, $facebook_product_parent);
 
-		// Retrieve the brand from the variation
+		// Test 1: Variation inherits brand from parent when not set
 		$brand = $facebook_product_variation->get_fb_brand();
-		$this->assertEquals($brand, 'Nike');
+		$this->assertEquals('Nike', $brand, 'Variation should inherit brand from parent');
 
-		// Set a different brand for the variation
-		$facebook_product_variation->set_fb_brand('Adidas');
-		$facebook_product_variation->save();
-
-		// Retrieve the brand again and check if it reflects the new value
+		// Test 2: Variation uses its own brand when set
+		update_post_meta($variation->get_id(), \WC_Facebook_Product::FB_BRAND, 'Adidas');
 		$brand = $facebook_product_variation->get_fb_brand();
-		$this->assertEquals($brand, 'Adidas');
+		$this->assertEquals('Adidas', $brand, 'Variation should use its own brand when set');
+
+		// Test 3: Removing variation's brand falls back to parent's brand
+		delete_post_meta($variation->get_id(), \WC_Facebook_Product::FB_BRAND);
+		$brand = $facebook_product_variation->get_fb_brand();
+		$this->assertEquals('Nike', $brand, 'Variation should fall back to parent brand when its brand is removed');
 	}
 
 	/**

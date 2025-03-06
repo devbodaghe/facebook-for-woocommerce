@@ -103,7 +103,7 @@ class Test_Admin_Sync_Indicator extends WP_Ajax_UnitTestCase {
         $synced_fields = $this->admin->sync_product_attributes($this->product->get_id());
 
         $this->assertArrayHasKey('size', $synced_fields);
-        $this->assertEquals('small', $synced_fields['size']); // Should take first value
+        $this->assertEquals('small | medium | large', $synced_fields['size']); // Multiple values should be joined with pipes
     }
 
     /**
