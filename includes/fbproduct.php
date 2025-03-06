@@ -1211,12 +1211,49 @@ class WC_Facebook_Product {
 		}
 
 		// Currently only items batch and feed support enhanced catalog fields
-		if ( self::PRODUCT_PREP_TYPE_NORMAL !== $type_to_prepare_for ) {
-			// Apply enhanced catalog fields regardless of Google product category
-			if ( $google_product_category ) {
-				$product_data = $this->apply_enhanced_catalog_fields_from_attributes( $product_data, $google_product_category );
+		if ( $google_product_category && self::PRODUCT_PREP_TYPE_NORMAL !== $type_to_prepare_for ) {
+			$product_data = $this->apply_enhanced_catalog_fields_from_attributes( $product_data, $google_product_category );
+		}
+
+		// Add stock quantity if the product or variant is stock managed.
+		// In case if variant is not stock managed but parent is, fallback on parent value.
+		if ( $this->woo_product->managing_stock() ) {
+			$product_data['quantity_to_sell_on_facebook'] = (int) max( 0, $this->woo_product->get_stock_quantity() );
+		} else if ( $this->woo_product->is_type( 'variation' ) ) {
+			$parent_product = wc_get_product( $this->woo_product->get_parent_id() );
+			if ( $parent_product && $parent_product->managing_stock() ) {
+				$product_data['quantity_to_sell_on_facebook'] = (int) max( 0, $parent_product->get_stock_quantity() );
 			}
-			// Always process basic variant data
+		}
+
+		// Add GTIN (Global Trade Item Number)
+		if ( method_exists( $this->woo_product, 'get_global_unique_id' ) && $gtin = $this->woo_product->get_global_unique_id() ) {
+			$product_data['gtin'] = $gtin;
+		}
+
+		// Only use checkout URLs if they exist.
+		$checkout_url = $this->build_checkout_url( $product_url );
+		if ( $checkout_url ) {
+			$product_data['checkout_url'] = $checkout_url;
+		}
+
+		// If using WPML, set the product to hidden unless it is in the
+		// default language. WPML >= 3.2 Supported.
+		if ( defined( 'ICL_LANGUAGE_CODE' ) ) {
+			if ( class_exists( 'WC_Facebook_WPML_Injector' ) && WC_Facebook_WPML_Injector::should_hide( $id ) ) {
+				$product_data['visibility'] = \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN;
+			}
+		}
+
+		// Exclude variations that are "virtual" products from export to Facebook &&
+		// No Visibility Option for Variations
+		// get_virtual() returns true for "unassembled bundles", so we exclude
+		// bundles from this check.
+		if ( true === $this->get_virtual() && 'bundle' !== $this->get_type() ) {
+			$product_data['visibility'] = \WC_Facebookcommerce_Integration::FB_SHOP_PRODUCT_HIDDEN;
+		}
+
+		if ( self::PRODUCT_PREP_TYPE_FEED !== $type_to_prepare_for ) {
 			$this->prepare_variants_for_item( $product_data );
 		} elseif (
 			WC_Facebookcommerce_Utils::is_all_caps( $product_data['description'] )
