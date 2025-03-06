@@ -1285,12 +1285,12 @@ class Admin {
 		$fb_brand              = get_post_meta( $post->ID, \WC_Facebook_Product::FB_BRAND, true ) ? get_post_meta( $post->ID, \WC_Facebook_Product::FB_BRAND, true ) : get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_brand', true );
 		$fb_mpn                = get_post_meta( $post->ID, \WC_Facebook_Product::FB_MPN, true );
 		$fb_condition             = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_CONDITION, true );
-		$fb_age_group             = get_post_meta( $post->ID, \WC_Facebook_Product::FB_AGE_GROUP, true );
-		$fb_gender                = get_post_meta( $post->ID, \WC_Facebook_Product::FB_GENDER, true );
-		$fb_size                  = get_post_meta( $post->ID, \WC_Facebook_Product::FB_SIZE, true );
-		$fb_color                 = get_post_meta( $post->ID, \WC_Facebook_Product::FB_COLOR, true );
-		$fb_material              = get_post_meta( $post->ID, \WC_Facebook_Product::FB_MATERIAL, true );
-		$fb_pattern               = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PATTERN, true );
+		$fb_age_group            = get_post_meta( $post->ID, \WC_Facebook_Product::FB_AGE_GROUP, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_age_group', true );
+		$fb_gender               = get_post_meta( $post->ID, \WC_Facebook_Product::FB_GENDER, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_gender', true );
+		$fb_size                 = get_post_meta( $post->ID, \WC_Facebook_Product::FB_SIZE, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_size', true );
+		$fb_color                = get_post_meta( $post->ID, \WC_Facebook_Product::FB_COLOR, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_color', true );
+		$fb_material             = get_post_meta( $post->ID, \WC_Facebook_Product::FB_MATERIAL, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_material', true );
+		$fb_pattern              = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PATTERN, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_pattern', true );
 
 		if ( $sync_enabled ) {
 			$sync_mode = $is_visible ? self::SYNC_MODE_SYNC_AND_SHOW : self::SYNC_MODE_SYNC_AND_HIDE;
