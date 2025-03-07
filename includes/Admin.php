@@ -55,7 +55,7 @@ class Admin {
 	const AGE_GROUP_ADULT = 'adult';
 
 	/** @var string the "all ages" age group */
-	const AGE_GROUP_ALL_AGES = 'all_ages';
+	const AGE_GROUP_ALL_AGES = 'all ages';
 
 	/** @var string the "teen" age group */
 	const AGE_GROUP_TEEN = 'teen';
@@ -1197,11 +1197,12 @@ class Admin {
 	 */
 	public function add_product_settings_tab( $tabs ) {
 
-		$tabs['fb_commerce_tab'] = array(
-			'label'  => __( 'Facebook', 'facebook-for-woocommerce' ),
-			'target' => 'facebook_options',
-			'class'  => array( 'show_if_simple', 'show_if_variable', 'show_if_external' ),
-		);
+		$tabs['facebook'] = [
+			'label'    => __( 'Facebook', 'facebook-for-woocommerce' ),
+			'target'   => 'facebook_options',
+			'class'    => array( 'show_if_simple', 'show_if_variable'  ),
+			'priority' => 70,
+		];
 
 		return $tabs;
 	}
@@ -1284,7 +1285,13 @@ class Admin {
 		$image                  = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_IMAGE, true );
 		$video_urls             = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_VIDEO, true );
 		$fb_brand               = get_post_meta( $post->ID, \WC_Facebook_Product::FB_BRAND, true ) ? get_post_meta( $post->ID, \WC_Facebook_Product::FB_BRAND, true ) : get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_brand', true );
-		$fb_mpn                 = get_post_meta( $post->ID, \WC_Facebook_Product::FB_MPN, true );
+		$fb_condition             = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PRODUCT_CONDITION, true );
+		$fb_age_group            = get_post_meta( $post->ID, \WC_Facebook_Product::FB_AGE_GROUP, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_age_group', true );
+		$fb_gender               = get_post_meta( $post->ID, \WC_Facebook_Product::FB_GENDER, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_gender', true );
+		$fb_size                 = get_post_meta( $post->ID, \WC_Facebook_Product::FB_SIZE, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_size', true );
+		$fb_color                = get_post_meta( $post->ID, \WC_Facebook_Product::FB_COLOR, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_color', true );
+		$fb_material             = get_post_meta( $post->ID, \WC_Facebook_Product::FB_MATERIAL, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_material', true );
+		$fb_pattern              = get_post_meta( $post->ID, \WC_Facebook_Product::FB_PATTERN, true ) ?: get_post_meta( $post->ID, '_wc_facebook_enhanced_catalog_attributes_pattern', true );
 
 		if ( $sync_enabled ) {
 			$sync_mode = $is_visible ? self::SYNC_MODE_SYNC_AND_SHOW : self::SYNC_MODE_SYNC_AND_HIDE;
