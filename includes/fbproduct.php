@@ -599,6 +599,11 @@ class WC_Facebook_Product {
 		return WC_Facebookcommerce_Utils::clean_string($fb_brand);
 	}
 
+	/**
+	 * Gets the main product description for Facebook.
+	 *
+	 * @return string
+	 */
 	public function get_fb_description() {
 		$description = '';
 
@@ -627,33 +632,45 @@ class WC_Facebook_Product {
 
 		// If no description is found from meta or variation, get from post
 		if ( empty( $description ) ) {
-			$post         = $this->get_post_data();
-			$post_content = WC_Facebookcommerce_Utils::clean_string( $post->post_content );
-			$post_excerpt = WC_Facebookcommerce_Utils::clean_string( $post->post_excerpt );
-			$post_title   = WC_Facebookcommerce_Utils::clean_string( $post->post_title );
-
-			// Prioritize content, then excerpt, then title
-			if ( ! empty( $post_content ) ) {
-				$description = $post_content;
-			}
-
-			if ( $this->sync_short_description || ( empty( $description ) && ! empty( $post_excerpt ) ) ) {
-				$description = $post_excerpt;
-			}
+			$post = $this->get_post_data();
+			$description = WC_Facebookcommerce_Utils::clean_string( $post->post_content );
 
 			if ( empty( $description ) ) {
-				$description = $post_title;
+				$description = WC_Facebookcommerce_Utils::clean_string( $post->post_title );
 			}
 		}
-		/**
-		 * Filters the FB product description.
-		 *
-		 * @since 3.2.6
-		 *
-		 * @param string  $description Facebook product description.
-		 * @param int     $id          WooCommerce Product ID.
-		 */
+
 		return apply_filters( 'facebook_for_woocommerce_fb_product_description', $description, $this->id );
+	}
+
+	/**
+	 * Gets the short product description for Facebook.
+	 *
+	 * @return string
+	 */
+	public function get_fb_short_description() {
+		$description = '';
+
+		// Try to get short description from post meta first
+		$post = $this->get_post_data();
+		if ( $post && !empty( $post->post_excerpt ) ) {
+			$description = WC_Facebookcommerce_Utils::clean_string( $post->post_excerpt );
+		}
+
+		// For variations, try to get variation-specific short description
+		if ( empty( $description ) && WC_Facebookcommerce_Utils::is_variation_type( $this->woo_product->get_type() ) ) {
+			$description = WC_Facebookcommerce_Utils::clean_string( $this->woo_product->get_description() );
+			
+			// Fallback to main product's short description
+			if ( empty( $description ) && $this->main_description ) {
+				$post = get_post( $this->woo_product->get_parent_id() );
+				if ( $post && !empty( $post->post_excerpt ) ) {
+					$description = WC_Facebookcommerce_Utils::clean_string( $post->post_excerpt );
+				}
+			}
+		}
+
+		return apply_filters( 'facebook_for_woocommerce_fb_product_short_description', $description, $this->id );
 	}
 
 	/**
@@ -687,7 +704,7 @@ class WC_Facebook_Product {
 		}
 
 		// For variable products, we want to use the rich text description of the variant.
-		// If that's not available, fall back to the main (parent) product's rich text description.
+		// If that's not available, fall back to the main (parent) product's rich text description as a fallback
 		if ( empty( $rich_text_description ) && WC_Facebookcommerce_Utils::is_variation_type( $this->woo_product->get_type() ) ) {
 			$rich_text_description = WC_Facebookcommerce_Utils::clean_string( $this->woo_product->get_description(), false );
 
@@ -1170,6 +1187,7 @@ class WC_Facebook_Product {
 		
 		$product_data = array();
 		$product_data[ 'description' ] = $this->get_fb_description();
+		$product_data[ 'short_description' ] = $this->get_fb_short_description();
 		$product_data[ 'rich_text_description' ] = $this->get_rich_text_description();
 		$product_data[ 'product_type' ] = $categories['categories'];
 		$product_data[ 'brand' ] = Helper::str_truncate( $this->get_fb_brand(), 100 );
