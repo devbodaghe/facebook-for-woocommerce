@@ -2197,8 +2197,37 @@ class WC_Facebook_Product {
 			],
 		];
 		
+		// Also check global product attributes that might not be in the product's attributes
+		$all_attributes = wc_get_attribute_taxonomies();
+		$global_attributes = [];
+		
+		if ($all_attributes) {
+			foreach ($all_attributes as $tax) {
+				$taxonomy_name = 'pa_' . $tax->attribute_name;
+				if (!isset($attributes[$taxonomy_name])) {
+					// Check if this global attribute applies to this product
+					$terms = get_the_terms($product_id, $taxonomy_name);
+					if ($terms && !is_wp_error($terms)) {
+						$global_attributes[$taxonomy_name] = (object)[
+							'get_name' => function() use ($taxonomy_name) { return $taxonomy_name; },
+							'is_taxonomy' => function() { return true; },
+							'get_terms' => function() use ($terms) { return $terms; },
+						];
+					}
+				}
+			}
+		}
+		
+		// Merge product attributes with applicable global attributes
+		$all_product_attributes = array_merge($attributes, $global_attributes);
+		
 		// Check each attribute
-		foreach ($attributes as $attribute) {
+		foreach ($all_product_attributes as $key => $attribute) {
+			// Skip if not a proper attribute object
+			if (!is_object($attribute) || !method_exists($attribute, 'get_name')) {
+				continue;
+			}
+			
 			$raw_name = $attribute->get_name();
 			$clean_name = str_replace('pa_', '', $raw_name);
 			$normalized_name = strtolower($clean_name);
@@ -2209,18 +2238,24 @@ class WC_Facebook_Product {
 			foreach ($attribute_map as $fb_attr_type => $meta_key) {
 				// Skip if this attribute doesn't match the current type
 				if (strpos($normalized_name, $fb_attr_type) === false && 
-					strpos($normalized_label, $fb_attr_type) === false) {
+					strpos($normalized_label, $fb_attr_type) === false &&
+					$normalized_name !== $fb_attr_type) {
 					continue;
 				}
 				
 				// Get attribute values
 				$values = [];
-				if ($attribute->is_taxonomy()) {
-					$terms = $attribute->get_terms();
+				if (method_exists($attribute, 'is_taxonomy') && $attribute->is_taxonomy()) {
+					if (method_exists($attribute, 'get_terms')) {
+						$terms = $attribute->get_terms();
+					} else {
+						$terms = get_the_terms($product_id, $raw_name);
+					}
+					
 					if ($terms && !is_wp_error($terms)) {
 						$values = wp_list_pluck($terms, 'name');
 					}
-				} else {
+				} else if (method_exists($attribute, 'get_options')) {
 					$values = $attribute->get_options();
 				}
 				
@@ -2243,8 +2278,6 @@ class WC_Facebook_Product {
 						if (!empty($valid_values)) {
 							$joined_values = implode(' | ', $valid_values);
 							update_post_meta($product_id, $meta_key, $joined_values);
-						} else {
-							delete_post_meta($product_id, $meta_key);
 						}
 					} else {
 						// Regular attributes
@@ -2262,6 +2295,14 @@ class WC_Facebook_Product {
 		if ($this->is_type('variation')) {
 			$parent_id = $this->get_parent_id();
 			if ($parent_id) {
+				// Try to sync parent attributes first to ensure we have latest values
+				if (class_exists('\\WooCommerce\\Facebook\\Admin')) {
+					$admin = facebook_for_woocommerce()->admin;
+					if ($admin && method_exists($admin, 'sync_product_attributes')) {
+						$admin->sync_product_attributes($parent_id);
+					}
+				}
+				
 				foreach ($attribute_map as $fb_attr_type => $meta_key) {
 					$value = get_post_meta($product_id, $meta_key, true);
 					if (empty($value)) {
@@ -2274,9 +2315,12 @@ class WC_Facebook_Product {
 			}
 		}
 		
-		// Log that we've refreshed the attributes
-		if (defined('WP_DEBUG') && WP_DEBUG) {
-			error_log("Facebook for WooCommerce: Refreshed attributes for product #{$product_id}");
+		// Optionally sync taxonomy attributes using Admin class
+		if (class_exists('\\WooCommerce\\Facebook\\Admin')) {
+			$admin = facebook_for_woocommerce()->admin;
+			if ($admin && method_exists($admin, 'sync_product_attributes')) {
+				$admin->sync_product_attributes($product_id);
+			}
 		}
 	}
 
