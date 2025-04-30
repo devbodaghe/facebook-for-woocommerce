@@ -181,6 +181,16 @@ class Background extends BackgroundJobHandler {
 			throw new PluginException( "No product found with ID equal to {$product_id}." );
 		}
 
+		// Sync product attributes to ensure meta values are updated
+		$admin_instance = null;
+		if ( property_exists( facebook_for_woocommerce(), 'admin' ) ) {
+			$admin_instance = facebook_for_woocommerce()->admin;
+		}
+		
+		if ( $admin_instance && method_exists( $admin_instance, 'sync_product_attributes' ) ) {
+			$admin_instance->sync_product_attributes( $product_id );
+		}
+
 		$request = null;
 		if ( ! Products::product_should_be_deleted( $product ) && Products::product_should_be_synced( $product ) ) {
 
