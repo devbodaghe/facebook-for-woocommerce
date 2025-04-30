@@ -182,13 +182,22 @@ class Background extends BackgroundJobHandler {
 		}
 
 		// Sync product attributes to ensure meta values are updated
+		// First try using the Admin instance if available
 		$admin_instance = null;
+		$synced = false;
+		
 		if ( property_exists( facebook_for_woocommerce(), 'admin' ) ) {
 			$admin_instance = facebook_for_woocommerce()->admin;
+			
+			if ( $admin_instance && method_exists( $admin_instance, 'sync_product_attributes' ) ) {
+				$admin_instance->sync_product_attributes( $product_id );
+				$synced = true;
+			}
 		}
 		
-		if ( $admin_instance && method_exists( $admin_instance, 'sync_product_attributes' ) ) {
-			$admin_instance->sync_product_attributes( $product_id );
+		// If we couldn't sync through Admin, do a basic sync of critical attributes
+		if ( !$synced ) {
+			$this->sync_critical_attributes( $product_id );
 		}
 
 		$request = null;
@@ -263,5 +272,103 @@ class Background extends BackgroundJobHandler {
 		$response_handles    = $response->handles;
 		$handles             = ( isset( $response_handles ) && is_array( $response_handles ) ) ? $response_handles : array();
 		return $handles;
+	}
+
+	// Add a new method for syncing critical attributes if the admin instance is not available
+	private function sync_critical_attributes( $product_id ) {
+		$product = wc_get_product( $product_id );
+		if ( ! $product ) {
+			return;
+		}
+
+		$attributes = $product->get_attributes();
+		
+		// Map for critical dropdown attributes
+		$critical_attributes = [
+			'age_group' => [
+				'meta_key' => \WC_Facebook_Product::FB_AGE_GROUP,
+				'valid_values' => [
+					\WC_Facebook_Product::AGE_GROUP_ADULT,
+					\WC_Facebook_Product::AGE_GROUP_ALL_AGES,
+					\WC_Facebook_Product::AGE_GROUP_TEEN,
+					\WC_Facebook_Product::AGE_GROUP_KIDS,
+					\WC_Facebook_Product::AGE_GROUP_TODDLER,
+					\WC_Facebook_Product::AGE_GROUP_INFANT,
+					\WC_Facebook_Product::AGE_GROUP_NEWBORN,
+				],
+			],
+			'gender' => [
+				'meta_key' => \WC_Facebook_Product::FB_GENDER,
+				'valid_values' => [
+					\WC_Facebook_Product::GENDER_MALE,
+					\WC_Facebook_Product::GENDER_FEMALE,
+					\WC_Facebook_Product::GENDER_UNISEX,
+				],
+			],
+			'condition' => [
+				'meta_key' => \WC_Facebook_Product::FB_PRODUCT_CONDITION,
+				'valid_values' => [
+					\WC_Facebook_Product::CONDITION_NEW,
+					\WC_Facebook_Product::CONDITION_USED,
+					\WC_Facebook_Product::CONDITION_REFURBISHED,
+				],
+			],
+		];
+		
+		foreach ( $attributes as $attribute ) {
+			// Extract attribute details
+			$raw_name = $attribute->get_name();
+			$clean_name = str_replace( 'pa_', '', $raw_name );
+			$normalized_name = strtolower( $clean_name );
+			$attribute_label = wc_attribute_label( $raw_name );
+			$normalized_label = strtolower( $attribute_label );
+			
+			// Process each critical attribute type
+			foreach ( $critical_attributes as $fb_attr_type => $attr_details ) {
+				// Skip if this attribute doesn't match the current type
+				if ( $normalized_name !== $fb_attr_type && $normalized_label !== $fb_attr_type && 
+					 strpos( $normalized_name, $fb_attr_type ) === false && 
+					 strpos( $normalized_label, $fb_attr_type ) === false ) {
+					continue;
+				}
+				
+				// Get attribute values
+				$values = [];
+				if ( $attribute->is_taxonomy() ) {
+					$terms = $attribute->get_terms();
+					if ( $terms && ! is_wp_error( $terms ) ) {
+						$values = wp_list_pluck( $terms, 'name' );
+					}
+				} else {
+					$values = $attribute->get_options();
+				}
+				
+				if ( ! empty( $values ) ) {
+					$valid_values = [];
+					
+					// Validate against allowed values
+					foreach ( $values as $value ) {
+						$normalized_value = strtolower( trim( $value ) );
+						
+						foreach ( $attr_details['valid_values'] as $allowed_value ) {
+							if ( strtolower( $allowed_value ) === $normalized_value ) {
+								$valid_values[] = $allowed_value;
+								break;
+							}
+						}
+					}
+					
+					if ( ! empty( $valid_values ) ) {
+						$joined_values = implode( ' | ', $valid_values );
+						update_post_meta( $product_id, $attr_details['meta_key'], $joined_values );
+					} else {
+						delete_post_meta( $product_id, $attr_details['meta_key'] );
+					}
+				}
+				
+				// We found and processed a match, no need to check this attribute against other types
+				break;
+			}
+		}
 	}
 }
