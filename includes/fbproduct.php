@@ -1636,6 +1636,9 @@ class WC_Facebook_Product {
 		if ( ! $retailer_id ) {
 			$retailer_id = WC_Facebookcommerce_Utils::get_fb_retailer_id( $this );
 		}
+		
+		// Force refresh attribute meta values before preparing product data
+		$this->refresh_attribute_meta_values();
 
 		$image_urls = $this->get_all_image_urls();
 
@@ -2148,6 +2151,133 @@ class WC_Facebook_Product {
 
 		$clean_value = WC_Facebookcommerce_Utils::clean_string($fb_mpn);
 		return $this->convert_pipe_separated_values($clean_value, $is_api_call);
+	}
+
+	/**
+	 * Refreshes attribute meta values before product is prepared for Facebook
+	 * This ensures that any recent changes to WooCommerce attributes are reflected in Facebook
+	 */
+	private function refresh_attribute_meta_values() {
+		$product_id = $this->id;
+		$attributes = $this->woo_product->get_attributes();
+		
+		// Map of critical attributes to their meta keys
+		$attribute_map = [
+			'age_group' => self::FB_AGE_GROUP,
+			'gender' => self::FB_GENDER,
+			'condition' => self::FB_PRODUCT_CONDITION,
+			'color' => self::FB_COLOR,
+			'size' => self::FB_SIZE,
+			'material' => self::FB_MATERIAL,
+			'pattern' => self::FB_PATTERN,
+			'brand' => self::FB_BRAND,
+			'mpn' => self::FB_MPN,
+		];
+		
+		// Special dropdown-type attributes with restricted values
+		$dropdown_attrs = [
+			'age_group' => [
+				self::AGE_GROUP_ADULT,
+				self::AGE_GROUP_ALL_AGES,
+				self::AGE_GROUP_TEEN,
+				self::AGE_GROUP_KIDS,
+				self::AGE_GROUP_TODDLER,
+				self::AGE_GROUP_INFANT,
+				self::AGE_GROUP_NEWBORN,
+			],
+			'gender' => [
+				self::GENDER_MALE,
+				self::GENDER_FEMALE,
+				self::GENDER_UNISEX,
+			],
+			'condition' => [
+				self::CONDITION_NEW,
+				self::CONDITION_USED,
+				self::CONDITION_REFURBISHED,
+			],
+		];
+		
+		// Check each attribute
+		foreach ($attributes as $attribute) {
+			$raw_name = $attribute->get_name();
+			$clean_name = str_replace('pa_', '', $raw_name);
+			$normalized_name = strtolower($clean_name);
+			$attribute_label = wc_attribute_label($raw_name);
+			$normalized_label = strtolower($attribute_label);
+			
+			// Check if this attribute should be mapped to a Facebook field
+			foreach ($attribute_map as $fb_attr_type => $meta_key) {
+				// Skip if this attribute doesn't match the current type
+				if (strpos($normalized_name, $fb_attr_type) === false && 
+					strpos($normalized_label, $fb_attr_type) === false) {
+					continue;
+				}
+				
+				// Get attribute values
+				$values = [];
+				if ($attribute->is_taxonomy()) {
+					$terms = $attribute->get_terms();
+					if ($terms && !is_wp_error($terms)) {
+						$values = wp_list_pluck($terms, 'name');
+					}
+				} else {
+					$values = $attribute->get_options();
+				}
+				
+				if (!empty($values)) {
+					// For dropdown attributes, validate against allowed values
+					if (isset($dropdown_attrs[$fb_attr_type])) {
+						$valid_values = [];
+						
+						foreach ($values as $value) {
+							$normalized_value = strtolower(trim($value));
+							
+							foreach ($dropdown_attrs[$fb_attr_type] as $allowed_value) {
+								if (strtolower($allowed_value) === $normalized_value) {
+									$valid_values[] = $allowed_value;
+									break;
+								}
+							}
+						}
+						
+						if (!empty($valid_values)) {
+							$joined_values = implode(' | ', $valid_values);
+							update_post_meta($product_id, $meta_key, $joined_values);
+						} else {
+							delete_post_meta($product_id, $meta_key);
+						}
+					} else {
+						// Regular attributes
+						$joined_values = implode(' | ', $values);
+						update_post_meta($product_id, $meta_key, $joined_values);
+					}
+				}
+				
+				// We found and processed a match, no need to check this attribute against other types
+				break;
+			}
+		}
+		
+		// For variation products, inherit attribute values from parent if not set
+		if ($this->is_type('variation')) {
+			$parent_id = $this->get_parent_id();
+			if ($parent_id) {
+				foreach ($attribute_map as $fb_attr_type => $meta_key) {
+					$value = get_post_meta($product_id, $meta_key, true);
+					if (empty($value)) {
+						$parent_value = get_post_meta($parent_id, $meta_key, true);
+						if (!empty($parent_value)) {
+							update_post_meta($product_id, $meta_key, $parent_value);
+						}
+					}
+				}
+			}
+		}
+		
+		// Log that we've refreshed the attributes
+		if (defined('WP_DEBUG') && WP_DEBUG) {
+			error_log("Facebook for WooCommerce: Refreshed attributes for product #{$product_id}");
+		}
 	}
 
 }
