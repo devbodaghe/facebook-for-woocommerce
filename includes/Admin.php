@@ -2252,10 +2252,52 @@ class Admin {
 
 		// Process all attributes and track which have been processed
 		$processed_fields = [];
+		
+		// Check for global attributes that might not be directly assigned to the product
+		$all_attributes = wc_get_attribute_taxonomies();
+		$global_attributes = [];
+		
+		if ($all_attributes) {
+			foreach ($all_attributes as $tax) {
+				$taxonomy_name = 'pa_' . $tax->attribute_name;
+				if (!isset($attributes[$taxonomy_name])) {
+					// Check if this global attribute applies to this product
+					$terms = get_the_terms($product_id, $taxonomy_name);
+					if ($terms && !is_wp_error($terms)) {
+						// Create a mock attribute object that mimics the structure of regular attributes
+						$global_attributes[$taxonomy_name] = (object)[
+							'get_name' => function() use ($taxonomy_name) { 
+								return $taxonomy_name; 
+							},
+							'is_taxonomy' => function() { 
+								return true; 
+							},
+							'get_terms' => function() use ($terms) { 
+								return $terms; 
+							},
+							'get_options' => function() use ($terms) {
+								return wp_list_pluck($terms, 'name');
+							}
+						];
+					}
+				}
+			}
+		}
+		
+		// Merge product attributes with applicable global attributes
+		$all_product_attributes = array_merge($attributes, $global_attributes);
 
-		foreach ( $attributes as $attribute ) {
-			// Get all possible variations of the attribute name for matching
-			$raw_name             = $attribute->get_name();
+		foreach ( $all_product_attributes as $attribute ) {
+			// Skip if not a proper attribute object
+			if (!is_object($attribute) || (!method_exists($attribute, 'get_name') && !isset($attribute->get_name))) {
+				continue;
+			}
+			
+			// Get attribute name - support both method and closure
+			$raw_name = is_callable([$attribute, 'get_name']) ? 
+				$attribute->get_name() : 
+				$attribute->get_name();
+				
 			$clean_name           = str_replace( 'pa_', '', $raw_name );
 			$normalized_attr_name = strtolower( $clean_name );
 			$attribute_label      = wc_attribute_label( $raw_name );
@@ -2307,13 +2349,23 @@ class Admin {
 			if ( $matched_facebook_field && ! in_array( $field_name, $processed_fields ) ) {
 				$values = [];
 
-				if ( $attribute->is_taxonomy() ) {
-					$terms = $attribute->get_terms();
+				// Support both regular attributes and our mock global attributes
+				$is_taxonomy = is_callable([$attribute, 'is_taxonomy']) ? 
+					$attribute->is_taxonomy() : 
+					$attribute->is_taxonomy();
+					
+				if ( $is_taxonomy ) {
+					$terms = is_callable([$attribute, 'get_terms']) ? 
+						$attribute->get_terms() : 
+						$attribute->get_terms();
+						
 					if ( $terms && ! is_wp_error( $terms ) ) {
 						$values = wp_list_pluck( $terms, 'name' );
 					}
 				} else {
-					$values = $attribute->get_options();
+					$values = is_callable([$attribute, 'get_options']) ? 
+						$attribute->get_options() : 
+						$attribute->get_options();
 				}
 
 				if ( ! empty( $values ) ) {
@@ -2337,7 +2389,10 @@ class Admin {
 							$facebook_fields[ $field_name ] = $joined_values;
 							update_post_meta( $product_id, $matched_facebook_field, $joined_values );
 						} else {
-							delete_post_meta( $product_id, $matched_facebook_field );
+							// Don't delete existing values if validating global attributes
+							if (!isset($global_attributes[$raw_name])) {
+								delete_post_meta( $product_id, $matched_facebook_field );
+							}
 							$facebook_fields[ $field_name ] = '';
 						}
 					} else {
@@ -2347,7 +2402,10 @@ class Admin {
 						update_post_meta( $product_id, $matched_facebook_field, $joined_values );
 					}
 				} else {
-					delete_post_meta( $product_id, $matched_facebook_field );
+					// Don't delete existing values if validating global attributes
+					if (!isset($global_attributes[$raw_name])) {
+						delete_post_meta( $product_id, $matched_facebook_field );
+					}
 					$facebook_fields[ $field_name ] = '';
 				}
 

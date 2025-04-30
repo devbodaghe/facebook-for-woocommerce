@@ -1637,6 +1637,23 @@ class WC_Facebook_Product {
 			$retailer_id = WC_Facebookcommerce_Utils::get_fb_retailer_id( $this );
 		}
 		
+		// Ensure taxonomy attributes are properly synced from WooCommerce to Facebook
+		if (class_exists('\\WooCommerce\\Facebook\\Admin')) {
+			$admin = facebook_for_woocommerce()->admin;
+			if ($admin && method_exists($admin, 'sync_product_attributes')) {
+				// Sync product attributes
+				$admin->sync_product_attributes($this->id);
+				
+				// For variations, also sync the parent
+				if (WC_Facebookcommerce_Utils::is_variation_type($this->woo_product->get_type())) {
+					$parent_id = $this->woo_product->get_parent_id();
+					if ($parent_id) {
+						$admin->sync_product_attributes($parent_id);
+					}
+				}
+			}
+		}
+		
 		// Force refresh attribute meta values before preparing product data
 		$this->refresh_attribute_meta_values();
 

@@ -181,24 +181,8 @@ class Background extends BackgroundJobHandler {
 			throw new PluginException( "No product found with ID equal to {$product_id}." );
 		}
 
-		// Sync product attributes to ensure meta values are updated
-		// First try using the Admin instance if available
-		$admin_instance = null;
-		$synced = false;
-		
-		if ( property_exists( facebook_for_woocommerce(), 'admin' ) ) {
-			$admin_instance = facebook_for_woocommerce()->admin;
-			
-			if ( $admin_instance && method_exists( $admin_instance, 'sync_product_attributes' ) ) {
-				$admin_instance->sync_product_attributes( $product_id );
-				$synced = true;
-			}
-		}
-		
-		// If we couldn't sync through Admin, do a basic sync of critical attributes
-		if ( !$synced ) {
-			$this->sync_critical_attributes( $product_id );
-		}
+		// Perform a thorough attribute sync before updating the product
+		$this->ensure_attributes_are_synced($product);
 
 		$request = null;
 		if ( ! Products::product_should_be_deleted( $product ) && Products::product_should_be_synced( $product ) ) {
@@ -368,6 +352,122 @@ class Background extends BackgroundJobHandler {
 				
 				// We found and processed a match, no need to check this attribute against other types
 				break;
+			}
+		}
+	}
+
+	/**
+	 * Ensures all attributes are properly synced before product update
+	 * This is a more comprehensive approach than the previous implementation
+	 *
+	 * @param \WC_Product $product Product object
+	 */
+	private function ensure_attributes_are_synced($product) {
+		if (!$product) {
+			return;
+		}
+		
+		$product_id = $product->get_id();
+		
+		// Sync parent product attributes first if this is a variation
+		if ($product->is_type('variation')) {
+			$parent_id = $product->get_parent_id();
+			if ($parent_id) {
+				$parent_product = wc_get_product($parent_id);
+				if ($parent_product) {
+					$this->ensure_attributes_are_synced($parent_product);
+				}
+			}
+		}
+		
+		// First try using the Admin instance if available
+		$admin_synced = false;
+		
+		if (class_exists('\\WooCommerce\\Facebook\\Admin')) {
+			$admin_instance = facebook_for_woocommerce()->admin;
+			
+			if ($admin_instance && method_exists($admin_instance, 'sync_product_attributes')) {
+				$admin_instance->sync_product_attributes($product_id);
+				$admin_synced = true;
+			}
+		}
+		
+		// If admin sync not available, use our basic sync
+		if (!$admin_synced) {
+			$this->sync_critical_attributes($product_id);
+		}
+		
+		// Create a Facebook product object to refresh attribute meta values
+		$fb_product = new \WC_Facebook_Product($product_id);
+		if (method_exists($fb_product, 'refresh_attribute_meta_values')) {
+			$fb_product->refresh_attribute_meta_values();
+		}
+		
+		// Check for global attributes that might not be directly assigned to the product
+		$this->sync_global_attributes($product_id);
+	}
+	
+	/**
+	 * Syncs global attributes that might not be directly assigned to the product
+	 *
+	 * @param int $product_id Product ID
+	 */
+	private function sync_global_attributes($product_id) {
+		// Map of critical attributes to their meta keys
+		$attribute_map = [
+			'age_group' => \WC_Facebook_Product::FB_AGE_GROUP,
+			'gender' => \WC_Facebook_Product::FB_GENDER,
+			'condition' => \WC_Facebook_Product::FB_PRODUCT_CONDITION,
+			'color' => \WC_Facebook_Product::FB_COLOR,
+			'size' => \WC_Facebook_Product::FB_SIZE,
+			'material' => \WC_Facebook_Product::FB_MATERIAL,
+			'pattern' => \WC_Facebook_Product::FB_PATTERN,
+		];
+		
+		// Get all attribute taxonomies
+		$attribute_taxonomies = wc_get_attribute_taxonomies();
+		
+		if (!$attribute_taxonomies) {
+			return;
+		}
+		
+		foreach ($attribute_taxonomies as $tax) {
+			$taxonomy_name = 'pa_' . $tax->attribute_name;
+			$terms = get_the_terms($product_id, $taxonomy_name);
+			
+			if (!$terms || is_wp_error($terms)) {
+				continue;
+			}
+			
+			// Get attribute label for matching
+			$attribute_label = $tax->attribute_label;
+			$normalized_label = strtolower($attribute_label);
+			$normalized_name = strtolower($tax->attribute_name);
+			
+			// Find matching Facebook field
+			$matched_fb_field = null;
+			$fb_field_name = null;
+			
+			foreach ($attribute_map as $fb_attr_name => $fb_meta_key) {
+				if ($normalized_name === $fb_attr_name || 
+					$normalized_label === $fb_attr_name || 
+					strpos($normalized_name, $fb_attr_name) !== false || 
+					strpos($normalized_label, $fb_attr_name) !== false) {
+					
+					$matched_fb_field = $fb_meta_key;
+					$fb_field_name = $fb_attr_name;
+					break;
+				}
+			}
+			
+			// If we found a matching field
+			if ($matched_fb_field) {
+				$values = wp_list_pluck($terms, 'name');
+				
+				if (!empty($values)) {
+					$joined_values = implode(' | ', $values);
+					update_post_meta($product_id, $matched_fb_field, $joined_values);
+				}
 			}
 		}
 	}
