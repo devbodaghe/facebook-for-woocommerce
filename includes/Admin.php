@@ -939,7 +939,6 @@ class Admin {
 
 					self::add_product_disabled_sync_notice( count( $products ) );
 				}
-			}//end if
 		}//end if
 
 		return $redirect;
