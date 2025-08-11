@@ -61,3 +61,11 @@ the [wiki for details of how to build and release the plugin](https://github.com
 
 We currently do not support PHPCS on PHP 8.1+ versions. Please run PHPCS checks on PHP 8.0 or lower versions.
 Refer [#2624 PR](https://github.com/woocommerce/facebook-for-woocommerce/pull/2624/) for additional context.
+
+// More robust product ID extraction
+if (preg_match('/wc_post_id_(\d+)/', $request['data']['id'], $matches)) {
+    $product_id = (int) $matches[1];
+    if ($product_id > 0) {
+        update_post_meta($product_id, '_fb_sync_last_time', time());
+    }
+}
